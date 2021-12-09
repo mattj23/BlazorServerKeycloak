@@ -1,0 +1,20 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView>
+    <Authorized>
+        <div class="d-flex justify-content-end">
+            <div class="p-2 text-nowrap">
+            </div>
+            <div class="p-2">
+                <a href="signout">Sign Out</a>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a href="signin?redirectUri=/">Sign In</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+
+}
