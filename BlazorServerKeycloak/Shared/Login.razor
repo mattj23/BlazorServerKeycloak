@@ -4,6 +4,7 @@
     <Authorized>
         <div class="d-flex justify-content-end">
             <div class="p-2 text-nowrap">
+                <strong>@context.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value</strong>
             </div>
             <div class="p-2">
                 <a href="signout">Sign Out</a>
@@ -16,5 +17,6 @@
 </AuthorizeView>
 
 @code {
+
 
 }
