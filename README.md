@@ -249,7 +249,7 @@ The provider can be added to `Program.cs` with the following extension methods:
 builder.Services.AddStaticApiKeys(builder.Configuration.GetSection("ApiKeys"));
 ```
 
-Here are examples of generating key hashes in Python and C#
+For reference, here are examples of generating key hashes in Python and C#
 
 ```python
 # Python
