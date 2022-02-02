@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 
@@ -19,34 +15,33 @@ namespace BlazorServerKeycloak
             _apiKeys = k;
         }
 
-        public const string API_KEY_HEADER_NAME = "X-API-KEY";
+        private const string ApiKeyHeaderName = "X-API-KEY";
 
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ApiKeyRequirement requirement)
         {
-
-            if (context.User.HasClaim(c => c.Type == "user_realm_roles" && requirement.RealmReq.HasRole(c.Value)))
+            if (requirement.RealmReq is null && context.User.Identity?.IsAuthenticated == true)
+            {
+                context.Succeed(requirement);
+            }
+            else if (context.User.HasClaim(c => c.Type == "user_realm_roles" && 
+                                                requirement.RealmReq?.HasRole(c.Value) == true))
             {
                 context.Succeed(requirement);
             }
             else if (context.Resource is HttpContext http)
             {
-                var keys = await _apiKeys.GetApiKeys();
-
-                var submitted = http.Request.Headers[API_KEY_HEADER_NAME].FirstOrDefault();
-                var bytes = Encoding.ASCII.GetBytes(submitted ?? string.Empty);
+                var submitted = http.Request.Headers[ApiKeyHeaderName].FirstOrDefault();
+                var bytes = Encoding.UTF8.GetBytes(submitted ?? string.Empty);
                 var hash = SHA256.Create();
                 var hashed = Convert.ToBase64String(hash.ComputeHash(bytes));
 
-                if (!keys.ContainsKey(hashed)) return;
+                var entity = await _apiKeys.VerifyKey(hashed);
+                if (entity is null) return;
 
-                var entity = keys[hashed];
                 http.User.AddIdentity(new ClaimsIdentity(new List<Claim>{ new Claim("ApiEntity", entity)}));
                 context.Succeed(requirement);
-
             }
-
         }
-
     }
 
     public static class ApiKeyExtensions

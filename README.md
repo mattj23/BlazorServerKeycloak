@@ -138,6 +138,134 @@ You will want to provide a mechanism for login somewhere.  The library comes wit
 
 At this point your application should successfully allow a user to sign in and sign out.
 
+### User Realm Roles
+
+Additional authorization policies can be added from Realm Roles mapped from Keycloak. If Keycloak is configured to map AD security groups to realm roles, these will be available in the ASP.NET context.  An authorization policy can be configured by setting up the following in `Program.cs`.
+
+```c#
+// Role names come from the Realm Roles "Role Name" properties in Keycloak
+var req = new UserRealmRoleRequirement("Role Name 1", "Role Name 2" /* 1 or more role names can be specified */);
+builder.Services.AddAuthorization(options =>
+{
+    // ... 
+    options.AddPolicy("MyPolicyName", policy => policy.Requirements.Add(req));
+    // ... 
+});
+
+// ...
+
+// Then make sure to register a handler to the services collection
+builder.Services.AddTransient<IAuthorizationHandler, UserRealmRoleRequirementHandler>();
+```
+
+The requirement can be used in the typical ways:
+
+```c#
+// In a controller...
+[Authorize(Policy = "MyPolicyName")]
+public class SomeController : ControllerBase 
+{
+    // ...
+}
+```
+
+```html
+<!-- In a razor component to protect the entire thing -->
+@attribute [Authorize(Policy = "MyPolicyName")]
+```
+
+```html
+<!-- In a razor page Authorizeview -->
+<AuthorizeView Policy="MyPolicyName">
+    <!-- ... -->
+</AuthorizeView>
+```
+
+
+### API Keys
+
+A common requirement is to have API controllers which are protected by a key policy that works independently from a browser cookie based authentication/authorization mechanism. However, it's often convenient to be able to ignore the need for an API key if the request is coming from a browser with a valid session.
+
+This library provides convenience mechanisms for implementing such a policy through the `ApiKeyRequirement` object, which works in conjunction with the `ApiKeyRequirementHandler`. The handler requires an `IApiKeySource` somewhere in the services collection, which you can implement yourself to look up keys from your own backend or use the pre-made `StaticApiKeySource` to work with a static list of keys like that which would come from the `appsettings.json` configuration file.
+
+#### How It Works
+
+A `UserRoleRequirement` can be embedded in the `ApiKeyRequirement` or left null.
+
+The API key requirement handler will perform the following sequence of checks:
+
+1. If no `UserRoleRequirement` is embedded in the key requirement, and the current context has an authenticated user, the handler will call `context.Succeed`
+2. If a `UserRoleRequirement` is embedded in the key requirement and the current context has an authenticated user which has one of the allowed roles, the handler will call `context.Succeed`
+3. If none of the previous were met but the header contains an `X-API-KEY` field with a value that, once SHA256 hashed and base-64 encoded, is verified by the `IApiKeySource`, the handler will call `context.Succeed`
+
+#### Setting it up
+```c#
+// Role names come from the Realm Roles "Role Name" properties in Keycloak
+var req = new ApiKeyRequirement();
+builder.Services.AddAuthorization(options =>
+{
+    // ... 
+    options.AddPolicy("MyApiKeyPolicy", policy => policy.Requirements.Add(req));
+    // ... 
+});
+
+// ...
+
+// Then make sure to register a handler to the services collection
+builder.Services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
+
+// Also make sure to put an IApiKeySource somewhere in your service collection!
+// builder.Services.Add.......();
+```
+
+The requirement can then be applied to an API controller.
+
+```c#
+// In a controller...
+[ApiController]
+[Authorize(Policy = "MyApiKeyPolicy")]
+public class SomeApiController : ControllerBase 
+{
+    // ...
+}
+```
+
+#### The StaticApiKeySource
+
+The `StaticApiKeySource` is a convenience class that provides a `IApiKeySource` from a dictionary in the `appsettings.json` file:
+
+```json
+"ApiKeys": {
+    "User 1": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=",
+    "User 2": "SG6kYiTRu0+2gPNPfJrZao8k7Ii+c+qOWmxlJg6cuKc="
+}
+```
+
+*Warning: do not have identical hashes for different users.  These should be generated or kept unique in some way.*
+
+The provider can be added to `Program.cs` with the following extension methods:
+
+```c#
+builder.Services.AddStaticApiKeys(builder.Configuration.GetSection("ApiKeys"));
+```
+
+Here are examples of generating key hashes in Python and C#
+
+```python
+# Python
+import hashlib, base64
+
+def to_hash(text: str) -> str:
+    return base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode("utf-8")
+
+print(to_hash("myapikeypassword"))
+```
+
+```c#
+// C#
+var text = "myapikeypassword";
+var hashed = Convert.ToBase64String(SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(text)));
+```
 
 ## Preparing Keycloak
 
