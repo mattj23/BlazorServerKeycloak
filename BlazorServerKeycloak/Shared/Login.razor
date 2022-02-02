@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager _navManager
 
 <AuthorizeView>
     <Authorized>
@@ -12,11 +13,10 @@
         </div>
     </Authorized>
     <NotAuthorized>
-        <a href="signin?redirectUri=/">Sign In</a>
+        <a href="signin?redirectUri=./">Sign In</a>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
-
-
+    
 }

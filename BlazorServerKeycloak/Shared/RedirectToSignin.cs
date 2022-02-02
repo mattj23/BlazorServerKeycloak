@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using System.Net;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 
 namespace BlazorServerKeycloak.Shared
@@ -13,10 +14,11 @@ namespace BlazorServerKeycloak.Shared
 
         protected override void OnInitialized()
         {
-            if (this.Context?.HttpContext?.User.Identity?.IsAuthenticated != true)
+            if (Context?.HttpContext?.User.Identity?.IsAuthenticated != true)
             {
-                var challengeUri = "/signin?redirectUri=" + System.Net.WebUtility.UrlEncode(this.NavigationManager?.Uri);
-                this.NavigationManager?.NavigateTo(challengeUri, true);
+                var challengeUri = "./signin?redirectUri=" + 
+                                   WebUtility.UrlEncode(NavigationManager?.Uri);
+                NavigationManager?.NavigateTo(challengeUri, true);
             }
         }
     }

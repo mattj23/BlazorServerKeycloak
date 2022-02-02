@@ -10,7 +10,7 @@ namespace BlazorServerKeycloak.Pages
         public async Task<IActionResult> OnGet()
         {
             await HttpContext.SignOutAsync();
-            return Redirect("/");
+            return Redirect("./");
         }
     }
 }
