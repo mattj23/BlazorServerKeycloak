@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityModel.Client;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
@@ -15,14 +16,13 @@ namespace BlazorServerKeycloak
 {
     public static class Extensions
     {
-        public static void AddKeycloak(this IServiceCollection services, IConfigurationSection config)
+        public static AuthenticationBuilder AddKeycloak(this IServiceCollection services, IConfigurationSection config)
         {
             var oidcOptions = new OpenIdConnectOptions();
             config.Bind(oidcOptions);
             services.AddSingleton(oidcOptions);
 
-
-            services.AddAuthentication(options =>
+            var builder = services.AddAuthentication(options =>
                 {
                     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                     options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
@@ -115,6 +115,7 @@ namespace BlazorServerKeycloak
                     };
                 });
 
+            return builder;
         }
 
         /// <summary>
