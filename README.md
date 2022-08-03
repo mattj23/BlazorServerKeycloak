@@ -58,6 +58,9 @@ In the new, simplified ASP.NET 6.0 setup's `Program.cs` file you will need to bo
 ```c#
 var builder = WebApplication.CreateBuilder(args);
 
+// The Http context accessor is needed for the system to work, make sure to add it if you don't have it already
+builder.Services.AddHttpContextAccessor();
+
 // Place this somewhere before the line `var app = builder.Build();`
 builder.Services.AddKeycloak(builder.Configuration.GetSection("Oidc"));
 ```
@@ -310,4 +313,6 @@ These are URIs where Keycloak will allow redirection during the OIDC flow.  See 
 ### Client Credentials
 
 On the Client edit page, select the "Credentials" tab.  The client secret will be a hexadecimal text token in a grayed out box labeled "Secret".  This is the client secret that will be used in the configuration of the ASP.NET project.  
+
+### Mapping Realm Roles
 
