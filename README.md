@@ -241,7 +241,7 @@ At this point your application should successfully allow a user to sign in and s
 
 ### User Realm Roles
 
-Additional authorization policies can be added from Realm Roles mapped from Keycloak. If Keycloak is configured to map AD security groups to realm roles, these will be available in the ASP.NET context.  An authorization policy can be configured by setting up the following in `Program.cs`.
+Additional authorization policies can be added from Realm Roles mapped from Keycloak. If Keycloak is configured to map AD security groups to realm roles (see the example in [Mapping Realm Roles](#mapping-realm-roles)), these will be available in the ASP.NET context.  An authorization policy can be configured by setting up the following in `Program.cs`.
 
 ```c#
 // Role names come from the Realm Roles "Role Name" properties in Keycloak
@@ -412,5 +412,51 @@ These are URIs where Keycloak will allow redirection during the OIDC flow.  See 
 
 On the Client edit page, select the "Credentials" tab.  The client secret will be a hexadecimal text token in a grayed out box labeled "Secret".  This is the client secret that will be used in the configuration of the ASP.NET project.  
 
+### Mapping User Attributes
+
+If you want specific additional claims to be be added for a client, this can be done using a client mapper.
+
+For example, imagine you have Keycloak federated with Active Directory and you want to pass along the unique ID associated with a user in LDAP.
+
+Under the "Clients" nav menu item, select the client of interest from the table.  Next go to the "Mappers" tab.  Press the "Create" button.
+
+| Parameter | Value |
+|-------|----------|
+| Name | Set a name for the mapping, for example `AD Unique ID` |
+| Mapper Type | Select "User Attribute" |
+| User Attribute | `LDAP_ID` |
+| Token Claim Name | Set to the desired claim name, for example `unique_id` |
+| Claim JSON Type | Select the type to be mapped, in this case we'll have to use a `String` |
+| Add to ID token | ON |
+| Add to access token | ON |
+| Add to userinfo | ON |
+| Multivalued | OFF |
+| Aggregate attribute values | OFF |
+
+Then press the "Save" button.
+
+Now, when running the ASP.NET Core project, there will be an additional claim in the `ClaimsPrincipal.Claims` collection.  It will have the `Type` string property set to `"unique_id"`, and its `Value` property will be a string with the hexadecimal text representation of a `Guid`.  It can be retrieved like any other claim.
+
 ### Mapping Realm Roles
 
+You can also map Keycloak realm roles to the ASP.NET Core `Claims` collection through the use of a client mapper.
+
+Let's return to the example of using Keycloak federated with a local Active Directory instance.  Imagine that Keycloak is already mapping Active Directory security groups to Keycloak realm roles through the use of the `role-ldap-mapper` type.  This means that users in Keycloak show mappings to roles associated with the AD security groups they belong to.  You want to pass these security groups to the ASP.NET Core application.
+
+Under the "Clients" nav menu item, select the client of interest from the table.  Next go to the "Mappers" tab.  Press the "Create" button.
+
+| Parameter | Value |
+|-------|----------|
+| Name | Set a name for the mapping, for example `Realm Roles` |
+| Mapper Type | Select "User Realm Role" |
+| Realm Role prefix | (left blank, use if desired) |
+| Multivalued | ON |
+| Token Claim Name | Set to the desired claim name, for example `user_realm_roles` |
+| Claim JSON Type | (left unselected) |
+| Add to ID token | ON |
+| Add to access token | ON |
+| Add to userinfo | ON |
+
+Now, when running the ASP.NET Core application, there will be multiple additional claims for each user.  Each of these claims will have the type of `"user_realm_roles"`, and the value will be a string with the name of one single AD security group mapped to that user.  There will be a unique claim for each group.
+
+This particular mapping can be used directly with the `UserRealmRoleRequirement` policies included in the library and described in the [User Realm Roles](#user-realm-roles) section, or you can modify it and build your own.
