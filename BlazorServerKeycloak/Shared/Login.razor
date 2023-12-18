@@ -1,11 +1,13 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
-@inject NavigationManager _navManager
+@using Microsoft.Extensions.DependencyInjection
+@inject AuthenticationStateProvider AuthProvider
+@inject IServiceProvider ServiceProvider
 
 <AuthorizeView>
     <Authorized>
         <div class="d-flex justify-content-end">
             <div class="p-2 text-nowrap">
-                <strong>@context.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value</strong>
+                <strong>@_displayText</strong>
             </div>
             <div class="p-2">
                 <a href="signout">Sign Out</a>
@@ -18,5 +20,22 @@
 </AuthorizeView>
 
 @code {
-    
+
+    private string _displayText = "Unknown";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var getter = ServiceProvider.GetService<IUserDisplayGetter>();
+        if (getter is null)
+        {
+            _displayText = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value ?? "Unknown";
+        }
+        else
+        {
+            _displayText = await getter.Get(authState.User) ?? "Unknown";
+        }
+        StateHasChanged();
+    }
+
 }

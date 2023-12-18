@@ -63,7 +63,13 @@ builder.Services.AddHttpContextAccessor();
 
 // Place this somewhere before the line `var app = builder.Build();`
 builder.Services.AddKeycloak(builder.Configuration.GetSection("Oidc"));
+
+// For ASP.NET Core 8.0, make sure that .AddRazorPages() is used if you are relying on the library's
+// built in Signin.cshtml and Signout.cshtml pages
+builder.Services.AddRazorPages();
 ```
+
+For ASP.NET Core 7 and earlier:
 
 ```c#
 // [...]
@@ -80,6 +86,28 @@ app.MapFallbackToPage("/_Host");
 app.Run();
 ```
 
+For ASP.NET Core 8:
+
+```c#
+// [...]
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAntiforgery();
+
+// Insert UseAuthentication and UseAuthorization in this order
+app.UseAuthentication();
+app.UseAuthorization();
+
+// [...]
+// For ASP.NET Core 8.0, make sure to map razor pages if you're relying on the library's built in
+// Signin.cshtml and Signout.cshtml pages, as these won't be included in the default template
+app.MapRazorPages();    
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+```
+
 ### Imports and App.Razor
 
 This library contains two razor components to help with the login process, located in the namespace `BlazorServerKeycloak.Shared`.  If you intend to use them you will need to add `@using` directives to any razor components which will reference them, or add them globally to the end of your project's `_Imports.razor` as shown:
@@ -88,7 +116,9 @@ This library contains two razor components to help with the login process, locat
 @using BlazorServerKeycloak.Shared
 ```
 
-You will also likely want to use cascading authentication state in your razor components.  I do this by changing the project's `App.razor` to something like this:
+You will also likely want to use cascading authentication state in your razor components.  
+
+In ASP.NET Core 7 and earlier, I've done this by changing the project's `App.razor` to something like this:
 
 ```razor
 <Router AppAssembly="@typeof(Program).Assembly">
@@ -116,6 +146,33 @@ You will also likely want to use cascading authentication state in your razor co
 </Router>
 ```
 
+In ASP.NET Core 8, I edited `Routes.razor` instead:
+
+```razor
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <RedirectToSignin />
+                    <h2>Authorization Required</h2>
+                    <p>This page is restricted, please log in to the SSO with your credentials.</p>
+                </NotAuthorized>
+                <Authorizing>
+                    <p>Authentication in progress.</p>
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+    
+</CascadingAuthenticationState>
+```
+
 ### Login component
 
 You will want to provide a mechanism for login somewhere.  The library comes with a component that will offer a sign-in or sign-out option based on the current authentication state.  An easy place to put it is in a typical project is in the `MainLayout.razor` component where the default template places the "About" link.  For example:
@@ -138,6 +195,47 @@ You will want to provide a mechanism for login somewhere.  The library comes wit
     </main>
 </div>
 ```
+
+If the `Login` component is authenticated, it will display some text related to the user plus a "Sign Out" link.  If the component is not authenticated, it will display a "Sign In" link.
+
+By default, the `Login` component will search for the `"preferred_username"` claim on the user and display that.  However, you can customize what text is displayed by adding a `IUserDisplayGetter` to the services collection.  For instance, if you want to use the `Identity.Name` property, you might create an implementation such as:
+
+```c#
+public class UserDisplayGetter : IUserDisplayGetter
+{
+    public Task<string?> Get(ClaimsPrincipal user)
+    {
+        return Task.FromResult(user.Identity?.Name);
+    }
+}
+```
+
+Or if you wanted to perform a lookup from a database or other system:
+
+```c#
+public class UserDisplayGetter : IUserDisplayGetter
+{
+    private readonly MyDbContext _db;
+
+    public UserDisplayGetter(MyDbContext db) 
+    {
+        _db = db;
+    }
+
+    public async Task<string?> Get(ClaimsPrincipal user)
+    {
+        var user = await _db.Users.FirstOrDefault(u => u.Id == user.Claims.First(c => c.Type == "unique_id"));
+        return user?.MySpecialName;
+    }
+}
+```
+
+In either case, register the getter with the service collection in `Program.cs`:
+
+```c#
+builder.Services.AddTransient<IUserDisplayGetter, UserDisplayGetter>();
+```
+
 
 At this point your application should successfully allow a user to sign in and sign out.
 
