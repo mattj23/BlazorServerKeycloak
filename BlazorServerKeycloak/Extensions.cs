@@ -31,7 +31,7 @@ namespace BlazorServerKeycloak
                 {
                     options.Cookie.SameSite = SameSiteMode.None;
                     options.Cookie.Name = "AuthCookie";
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                     options.SlidingExpiration = true;
                     options.Events = new CookieAuthenticationEvents
                     {
