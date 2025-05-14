@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
-namespace BlazorServerKeycloak;
+#pragma warning disable IDE0130 // Namespace does not match folder structure
+namespace Microsoft.AspNetCore.Routing;
+#pragma warning restore IDE0130 // Namespace does not match folder structure
 
-public static class LoginLogoutEndpointRouteBuilderExtensions
+public static class KeycloakAuthEndpointRouteBuilderExtensions
 {
     public static IEndpointConventionBuilder MapAuthEndpoints(this IEndpointRouteBuilder endpoints)
     {

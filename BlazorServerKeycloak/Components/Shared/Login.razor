@@ -1,0 +1,60 @@
+﻿@using BlazorServerKeycloak
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@implements IDisposable
+@inject AuthenticationStateProvider AuthProvider
+@inject IServiceProvider ServiceProvider
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <div class="d-flex justify-content-end">
+            <div class="p-2 text-nowrap">
+                <strong>@_displayText</strong>
+            </div>
+            <div class="p-2">
+                <form method="post" action="signout">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="returnUrl" value="@currentUrl" />
+                    <button type="submit" class="nav-link">Sign Out</button>
+                </form>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a href="@($"signin?returnUrl={currentUrl}")">Sign In</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+
+    private string _displayText = "Unknown";
+    private string? currentUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = Navigation.Uri;
+        Navigation.LocationChanged += OnLocationChanged;
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var getter = ServiceProvider.GetService<IUserDisplayGetter>();
+        if (getter is null)
+        {
+            _displayText = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value ?? "Unknown";
+        }
+        else
+        {
+            _displayText = await getter.Get(authState.User) ?? "Unknown";
+        }
+        StateHasChanged();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = Navigation.Uri;
+        StateHasChanged();
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+}

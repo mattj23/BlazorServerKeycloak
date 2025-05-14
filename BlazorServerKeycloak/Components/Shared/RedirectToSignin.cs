@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 
-namespace BlazorServerKeycloak.Shared;
+namespace BlazorServerKeycloak.Components.Shared;
 
 public class RedirectToSignin : ComponentBase
 {
