@@ -13,19 +13,16 @@ This is a Razor class library which borrows heavily from https://github.com/vip3
 
 ## Installation
 
-The BlazorServerKeycloak library can be added to an ASP.NET 6 application either as a Nuget package or via git using the submodule mechanism.  The library was designed for and tested with server-side Blazor projects, I do not know if it will work with other types of ASP.NET projects, and I do not believe there is any reason to use it in such cases where a `HttpContext` is available for cookie based authentication.
+The BlazorServerKeycloak library can be added to an .NET 6+ application either as a Nuget package or via git using the submodule mechanism.  The library was designed for and tested with server-side Blazor projects, I do not know if it will work with other types of ASP.NET projects, and I do not believe there is any reason to use it in such cases where a `HttpContext` is available for cookie based authentication.
 
 ### Nuget Package
 Todo: Nuget package
 
 ### Git submodule
 
-In your project, add this one as a git submodule:
+In your project, add this repo as a submodule.
 
-```bash
-git submodule add git@github.com:mattj23/BlazorServerKeycloak.git
-```
-In your solution file, add the existing project `BlazorServerKeycloak.csproj`.  Then in your Blazor server-side ASP.NET 6 project's dependencies add a project reference to `BlazorServerKeycloak`.
+In your solution file, add the existing project `BlazorServerKeycloak.csproj`.  Then in your Blazor server-side project's dependencies add a project reference to `BlazorServerKeycloak`.
 
 ## Project Setup
 
@@ -61,12 +58,12 @@ var builder = WebApplication.CreateBuilder(args);
 // The Http context accessor is needed for the system to work, make sure to add it if you don't have it already
 builder.Services.AddHttpContextAccessor();
 
-// Place this somewhere before the line `var app = builder.Build();`
-builder.Services.AddKeycloak(builder.Configuration.GetSection("Oidc"));
+// Place this somewhere before the call to AddRazorComponents.
+builder.Services.AddKeycloakAuthentication(builder.Configuration.GetSection("Oidc"));
+// [..]
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// For ASP.NET Core 8.0, make sure that .AddRazorPages() is used if you are relying on the library's
-// built in Signin.cshtml and Signout.cshtml pages
-builder.Services.AddRazorPages();
 ```
 
 For ASP.NET Core 7 and earlier:
@@ -83,6 +80,7 @@ app.UseAuthorization();
 // [...]
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+app.MapAuthEndpoints();
 app.Run();
 ```
 
@@ -91,62 +89,33 @@ For ASP.NET Core 8:
 ```c#
 // [...]
 app.UseStaticFiles();
-app.UseRouting();
-app.UseAntiforgery();
 
 // Insert UseAuthentication and UseAuthorization in this order
 app.UseAuthentication();
 app.UseAuthorization();
 
-// [...]
-// For ASP.NET Core 8.0, make sure to map razor pages if you're relying on the library's built in
-// Signin.cshtml and Signout.cshtml pages, as these won't be included in the default template
-app.MapRazorPages();    
+// Antiforgery needs to go after the calls to UseAuthentication and UseAuthorization
+app.UseAntiforgery();    
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapAuthEndpoints();
+app.Run();
 
 ```
 
 ### Imports and App.Razor
 
-This library contains two razor components to help with the login process, located in the namespace `BlazorServerKeycloak.Shared`.  If you intend to use them you will need to add `@using` directives to any razor components which will reference them, or add them globally to the end of your project's `_Imports.razor` as shown:
+This library contains two razor components to help with the login process, located in the namespace `BlazorServerKeycloak.Components.Shared`.  If you intend to use them you will need to add `@using` directives to any razor components which will reference them, or add them globally to the end of your project's `_Imports.razor` as shown:
 
 ```razor
-@using BlazorServerKeycloak.Shared
+@using BlazorServerKeycloak.Components.Shared
 ```
 
 You will also likely want to use cascading authentication state in your razor components.  
 
-In ASP.NET Core 7 and earlier, I've done this by changing the project's `App.razor` to something like this:
-
-```razor
-<Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-            <NotAuthorized>
-                <RedirectToSignin />
-                <h2>Authorization Required</h2>
-                <p>This page is restricted, please log in to the SSO with your credentials.</p>
-            </NotAuthorized>
-            <Authorizing>
-                <p>Authentication in progress.</p>
-            </Authorizing>
-
-        </AuthorizeRouteView> 
-    </Found>
-
-    <NotFound>
-        <CascadingAuthenticationState>
-            <LayoutView Layout="@typeof(MainLayout)">
-                <p>Sorry, there's nothing at this address.</p>
-            </LayoutView>
-        </CascadingAuthenticationState>
-    </NotFound>
-</Router>
-```
-
-In ASP.NET Core 8, I edited `Routes.razor` instead:
+In .NET 7 and earlier, Change the project's `App.razor` to something like this:
 
 ```razor
 <CascadingAuthenticationState>
@@ -161,16 +130,25 @@ In ASP.NET Core 8, I edited `Routes.razor` instead:
                 <Authorizing>
                     <p>Authentication in progress.</p>
                 </Authorizing>
-            </AuthorizeRouteView>
+
+            </AuthorizeRouteView> 
         </Found>
+
         <NotFound>
             <LayoutView Layout="@typeof(MainLayout)">
                 <p>Sorry, there's nothing at this address.</p>
             </LayoutView>
         </NotFound>
     </Router>
-    
 </CascadingAuthenticationState>
+```
+
+In .NET 8+, place a call to `AddCascadingAuthenticationState` after the call to `AddKeycloak`:
+
+```c#
+builder.Services.AddKeycloak(builder.Configuration.GetRequiredSection("Oidc"));
+// [..]
+builder.Services.AddCascadingAuthenticationState();
 ```
 
 ### Login component
@@ -201,6 +179,8 @@ If the `Login` component is authenticated, it will display some text related to 
 By default, the `Login` component will search for the `"preferred_username"` claim on the user and display that.  However, you can customize what text is displayed by adding a `IUserDisplayGetter` to the services collection.  For instance, if you want to use the `Identity.Name` property, you might create an implementation such as:
 
 ```c#
+using BlazorServerKeycloak.Interfaces;
+
 public class UserDisplayGetter : IUserDisplayGetter
 {
     public Task<string?> Get(ClaimsPrincipal user)
@@ -213,6 +193,8 @@ public class UserDisplayGetter : IUserDisplayGetter
 Or if you wanted to perform a lookup from a database or other system:
 
 ```c#
+using BlazorServerKeycloak.Interfaces;
+
 public class UserDisplayGetter : IUserDisplayGetter
 {
     private readonly MyDbContext _db;
@@ -244,14 +226,13 @@ At this point your application should successfully allow a user to sign in and s
 Additional authorization policies can be added from Realm Roles mapped from Keycloak. If Keycloak is configured to map AD security groups to realm roles (see the example in [Mapping Realm Roles](#mapping-realm-roles)), these will be available in the ASP.NET context.  An authorization policy can be configured by setting up the following in `Program.cs`.
 
 ```c#
+using BlazorServerKeycloak.Authorization;
+
 // Role names come from the Realm Roles "Role Name" properties in Keycloak
 var req = new UserRealmRoleRequirement("Role Name 1", "Role Name 2" /* 1 or more role names can be specified */);
-builder.Services.AddAuthorization(options =>
-{
-    // ... 
-    options.AddPolicy("MyPolicyName", policy => policy.Requirements.Add(req));
-    // ... 
-});
+// https://learn.microsoft.com/en-us/aspnet/core/diagnostics/asp0025
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("MyPolicyName", policy => policy.Requirements.Add(req));
 
 // ...
 
@@ -301,14 +282,12 @@ The API key requirement handler will perform the following sequence of checks:
 
 #### Setting it up
 ```c#
+using BlazorServerKeycloak.Authorization;
+
 // Role names come from the Realm Roles "Role Name" properties in Keycloak
 var req = new ApiKeyRequirement();
-builder.Services.AddAuthorization(options =>
-{
-    // ... 
-    options.AddPolicy("MyApiKeyPolicy", policy => policy.Requirements.Add(req));
-    // ... 
-});
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("MyApiKeyPolicy", policy => policy.Requirements.Add(req));
 
 // ...
 
