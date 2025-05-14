@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
-namespace Microsoft.AspNetCore.Routing;
+namespace BlazorServerKeycloak.Helpers;
 #pragma warning restore IDE0130 // Namespace does not match folder structure
 
 public static class KeycloakAuthEndpointRouteBuilderExtensions

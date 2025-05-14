@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using BlazorServerKeycloak.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

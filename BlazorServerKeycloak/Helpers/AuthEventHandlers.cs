@@ -1,10 +1,11 @@
-﻿using IdentityModel.Client;
+﻿using BlazorServerKeycloak.Authorization;
+using IdentityModel.Client;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace BlazorServerKeycloak;
+namespace BlazorServerKeycloak.Helpers;
 public static class AuthEventHandlers
 {
     public static async Task OnValidatePrincipalAsync(CookieValidatePrincipalContext context, OpenIdConnectOptions oidcOptions)

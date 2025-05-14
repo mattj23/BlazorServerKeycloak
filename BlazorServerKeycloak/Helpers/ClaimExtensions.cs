@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using BlazorServerKeycloak.Authorization;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure

@@ -1,4 +1,4 @@
-﻿using BlazorServerKeycloak;
+﻿using BlazorServerKeycloak.Helpers;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
