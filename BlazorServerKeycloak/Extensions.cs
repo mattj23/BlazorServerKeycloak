@@ -50,14 +50,14 @@ public static class Extensions
                                 ClientId = oidcOptions.ClientId,
                                 ClientSecret = oidcOptions.ClientSecret,
                                 RefreshToken =
-                                    ((ClaimsIdentity)c.Principal.Identity)
+                                    ((ClaimsIdentity)c.Principal!.Identity!)
                                     .GetClaimValue(ClaimType
                                         .RefreshToken)
                             }).ConfigureAwait(false);
 
                             if (!response.IsError)
                             {
-                                ((ClaimsIdentity)c.Principal.Identity)
+                                ((ClaimsIdentity)c.Principal!.Identity!)
                                     .SetIdentityClaims(response.AccessToken, response.RefreshToken);
 
                                 c.ShouldRenew = true;
@@ -91,11 +91,11 @@ public static class Extensions
                     {
                         // this event is called after the OIDC middleware received the authorization code,
                         // redeemed it for an access token + a refresh token and validated the identity token
-                        ((ClaimsIdentity)t.Principal.Identity)
-                            .SetIdentityClaims(t.TokenEndpointResponse.AccessToken,
+                        ((ClaimsIdentity)t.Principal!.Identity!)
+                            .SetIdentityClaims(t.TokenEndpointResponse!.AccessToken!,
                                 t.TokenEndpointResponse.RefreshToken);
 
-                        t.Properties.ExpiresUtc =
+                        t.Properties!.ExpiresUtc =
                             new JwtSecurityToken(t.TokenEndpointResponse.AccessToken)
                                 .ValidTo; // align expiration of the cookie with expiration of the access token
                         t.Properties.IsPersistent =
@@ -116,43 +116,35 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Gets an identity claim
+    /// Gets an identity claim by the supplied <paramref name="type"/>
     /// </summary>
+    /// <param name="source">Claim to search</param>
+    /// <param name="type">Claim type</param>
     /// <returns></returns>
     public static Claim GetClaim(this ClaimsIdentity source, string type)
     {
-        if (source == null || string.IsNullOrEmpty(type))
+        if (source is null || string.IsNullOrEmpty(type))
         {
-            return default;
+            return default!;
         }
 
-        var claim = source.FindFirst(type);
-        if (claim != null)
-        {
-            return claim;
-        }
-
-        return default;
+        return source.FindFirst(type) ?? default!;
     }
 
     /// <summary>
-    /// Adds or updates a identity claim
+    /// Gets the value from <paramref name="source"/> by <paramref name="type"/>
     /// </summary>
-    /// <returns></returns>
+    /// <param name="source">Claim to search</param>
+    /// <param name="type">Claim type</param>
+    /// <returns>string containing value of claim or an empty string</returns>
     public static string GetClaimValue(this ClaimsIdentity source, string type)
     {
         if (source == null || string.IsNullOrEmpty(type))
         {
-            return default;
+            return string.Empty;
         }
 
-        var claim = source.FindFirst(type);
-        if (claim != null)
-        {
-            return claim.Value;
-        }
-
-        return default;
+        return source.FindFirst(type)?.Value ?? string.Empty;
     }
 
     /// <summary>
@@ -161,10 +153,8 @@ public static class Extensions
     /// <returns></returns>
     public static ClaimsIdentity SetClaim(this ClaimsIdentity source, Claim claim)
     {
-        if (source == null || claim == null)
-        {
-            return source;
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(claim, nameof(claim));
 
         if (source.FindFirst(claim.Type) != null)
         {
@@ -181,19 +171,11 @@ public static class Extensions
     /// <returns></returns>
     public static ClaimsIdentity SetClaimValue(this ClaimsIdentity source, string type, string value)
     {
-        if (source == null || string.IsNullOrEmpty(type))
-        {
-            return source;
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
-        var claim = source.FindFirst(type);
-        if (claim != null)
-        {
-            source.RemoveClaim(claim);
-        }
+        Claim claim = new(type, value);
 
-        source.AddClaim(new Claim(type, value));
-        return source;
+        return source.SetClaim(claim);
     }
 
     /// <summary>
@@ -202,19 +184,11 @@ public static class Extensions
     /// <returns></returns>
     public static ClaimsIdentity AddOrUpdateClaim(this ClaimsIdentity source, string type, long value)
     {
-        if (source == null || string.IsNullOrEmpty(type))
-        {
-            return source;
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
-        var claim = source.FindFirst(type);
-        if (claim != null)
-        {
-            source.RemoveClaim(claim);
-        }
+        Claim claim = new(type, value.ToString());
 
-        source.AddClaim(new Claim(type, value.ToString()));
-        return source;
+        return source.SetClaim(claim);
     }
 
     /// <summary>
@@ -223,19 +197,11 @@ public static class Extensions
     /// <returns></returns>
     public static ClaimsIdentity AddOrUpdateClaim(this ClaimsIdentity source, string type, long? value)
     {
-        if (source == null || string.IsNullOrEmpty(type))
-        {
-            return source;
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        
+        Claim claim = new(type, value.ToString()!);
 
-        var claim = source.FindFirst(type);
-        if (claim != null)
-        {
-            source.RemoveClaim(claim);
-        }
-
-        source.AddClaim(new Claim(type, value?.ToString()));
-        return source;
+        return source.SetClaim(claim);
     }
 
     public static ClaimsIdentity SetIdentityClaims(this ClaimsIdentity source, string accessToken, string refreshToken)
