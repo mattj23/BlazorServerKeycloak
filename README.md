@@ -61,12 +61,12 @@ var builder = WebApplication.CreateBuilder(args);
 // The Http context accessor is needed for the system to work, make sure to add it if you don't have it already
 builder.Services.AddHttpContextAccessor();
 
-// Place this somewhere before the line `var app = builder.Build();`
+// Place this somewhere before the call to AddRazorComponents.
 builder.Services.AddKeycloak(builder.Configuration.GetSection("Oidc"));
+// [..]
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// For ASP.NET Core 8.0, make sure that .AddRazorPages() is used if you are relying on the library's
-// built in Signin.cshtml and Signout.cshtml pages
-builder.Services.AddRazorPages();
 ```
 
 For ASP.NET Core 7 and earlier:
@@ -83,6 +83,7 @@ app.UseAuthorization();
 // [...]
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+app.MapAuthEndpoints();
 app.Run();
 ```
 
@@ -91,20 +92,19 @@ For ASP.NET Core 8:
 ```c#
 // [...]
 app.UseStaticFiles();
-app.UseRouting();
-app.UseAntiforgery();
 
 // Insert UseAuthentication and UseAuthorization in this order
 app.UseAuthentication();
 app.UseAuthorization();
 
-// [...]
-// For ASP.NET Core 8.0, make sure to map razor pages if you're relying on the library's built in
-// Signin.cshtml and Signout.cshtml pages, as these won't be included in the default template
-app.MapRazorPages();    
+// Antiforgery needs to go after the calls to UseAuthentication and UseAuthorization
+app.UseAntiforgery();    
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapAuthEndpoints();
+app.Run();
 
 ```
 
@@ -121,34 +121,6 @@ You will also likely want to use cascading authentication state in your razor co
 In ASP.NET Core 7 and earlier, I've done this by changing the project's `App.razor` to something like this:
 
 ```razor
-<Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-            <NotAuthorized>
-                <RedirectToSignin />
-                <h2>Authorization Required</h2>
-                <p>This page is restricted, please log in to the SSO with your credentials.</p>
-            </NotAuthorized>
-            <Authorizing>
-                <p>Authentication in progress.</p>
-            </Authorizing>
-
-        </AuthorizeRouteView> 
-    </Found>
-
-    <NotFound>
-        <CascadingAuthenticationState>
-            <LayoutView Layout="@typeof(MainLayout)">
-                <p>Sorry, there's nothing at this address.</p>
-            </LayoutView>
-        </CascadingAuthenticationState>
-    </NotFound>
-</Router>
-```
-
-In ASP.NET Core 8, I edited `Routes.razor` instead:
-
-```razor
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(Program).Assembly">
         <Found Context="routeData">
@@ -161,16 +133,25 @@ In ASP.NET Core 8, I edited `Routes.razor` instead:
                 <Authorizing>
                     <p>Authentication in progress.</p>
                 </Authorizing>
-            </AuthorizeRouteView>
+
+            </AuthorizeRouteView> 
         </Found>
+
         <NotFound>
             <LayoutView Layout="@typeof(MainLayout)">
                 <p>Sorry, there's nothing at this address.</p>
             </LayoutView>
         </NotFound>
     </Router>
-    
 </CascadingAuthenticationState>
+```
+
+In ASP.NET Core 8, place a call to `AddCascadingAuthenticationState` after the call to `AddKeycloak`:
+
+```c#
+builder.Services.AddKeycloak(builder.Configuration.GetRequiredSection("Oidc"));
+// [..]
+builder.Services.AddCascadingAuthenticationState();
 ```
 
 ### Login component
