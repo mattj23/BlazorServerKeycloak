@@ -24,15 +24,14 @@ public class ApiKeyRequirementHandler(IApiKeySource apiKeySource) : Authorizatio
         }
         else if (context.Resource is HttpContext http)
         {
-            var submitted = http.Request.Headers[ApiKeyHeaderName].FirstOrDefault();
-            var bytes = Encoding.UTF8.GetBytes(submitted ?? string.Empty);
-            var hash = SHA256.Create();
-            var hashed = Convert.ToBase64String(hash.ComputeHash(bytes));
+            string? submitted = http.Request.Headers[ApiKeyHeaderName].FirstOrDefault();
+            byte[] bytes = Encoding.UTF8.GetBytes(submitted ?? string.Empty);
+            string? hashed = Convert.ToBase64String(SHA256.HashData(bytes));
 
-            var entity = await _apiKeys.VerifyKey(hashed);
+            string? entity = await _apiKeys.VerifyKey(hashed);
             if (entity is null) return;
 
-            http.User.AddIdentity(new ClaimsIdentity(new List<Claim>{ new Claim("ApiEntity", entity)}));
+            http.User.AddIdentity(new ClaimsIdentity([new Claim("ApiEntity", entity)]));
             context.Succeed(requirement);
         }
     }
@@ -42,14 +41,17 @@ public static class ApiKeyExtensions
 {
     public static string IdentityName(this HttpContext context)
     {
-        var name = context?.User.Identity?.Name;
+        return context?.User.Identity?.Name
+            ?? context?.User?.Claims?.FirstOrDefault(c => c.Type == "ApiEntity")?.Value
+            ?? string.Empty;
+        //string? name = context?.User.Identity?.Name;
 
-        if (name is null)
-        {
-            var apiClaim = context?.User?.Claims.FirstOrDefault(c => c.Type == "ApiEntity");
-            name = apiClaim?.Value;
-        }
+        //if (name is null)
+        //{
+        //    var apiClaim = context?.User?.Claims.FirstOrDefault(c => c.Type == "ApiEntity");
+        //    name = apiClaim?.Value;
+        //}
 
-        return name;
+        //return name;
     }
 }
