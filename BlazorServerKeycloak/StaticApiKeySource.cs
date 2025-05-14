@@ -36,6 +36,6 @@ public static class StaticApiKeySourceExtensions
     public static void AddStaticApiKeys(this IServiceCollection services, IConfigurationSection config)
     {
         var keys = config.Get<Dictionary<string, string>>();
-        services.AddSingleton<IApiKeySource>(new StaticApiKeySource(keys.ToDictionary(p => p.Value, p => p.Key)));
+        services.AddSingleton<IApiKeySource>(new StaticApiKeySource(keys!.ToDictionary(p => p.Value, p => p.Key)));
     }
 }
