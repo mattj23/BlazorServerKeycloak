@@ -6,15 +6,9 @@ using Microsoft.AspNetCore.Http;
 
 namespace BlazorServerKeycloak;
 
-public class ApiKeyRequirementHandler : AuthorizationHandler<ApiKeyRequirement>
+public class ApiKeyRequirementHandler(IApiKeySource apiKeySource) : AuthorizationHandler<ApiKeyRequirement>
 {
-    private readonly IApiKeySource _apiKeys;
-
-    public ApiKeyRequirementHandler(IApiKeySource k)
-    {
-        _apiKeys = k;
-    }
-
+    private readonly IApiKeySource _apiKeys = apiKeySource;
     private const string ApiKeyHeaderName = "X-API-KEY";
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ApiKeyRequirement requirement)

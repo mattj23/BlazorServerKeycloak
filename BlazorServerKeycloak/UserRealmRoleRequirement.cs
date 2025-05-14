@@ -4,16 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BlazorServerKeycloak;
 
-public class UserRealmRoleRequirement : IAuthorizationRequirement
+public class UserRealmRoleRequirement(params string[] roles) : IAuthorizationRequirement
 {
-    private readonly string[] _roles;
-
-    public UserRealmRoleRequirement(params string[] roles)
-    {
-        _roles = roles;
-    }
-
-    public bool HasRole(string roleName) => ((IList)_roles).Contains(roleName);
+    public bool HasRole(string roleName) => ((IList)roles).Contains(roleName);
 }
 
 public class UserRealmRoleRequirementHandler : AuthorizationHandler<UserRealmRoleRequirement>

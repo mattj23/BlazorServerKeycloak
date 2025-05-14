@@ -7,14 +7,9 @@ namespace BlazorServerKeycloak;
 /// <summary>
 /// A simple, built in IApiKeySource that checks keys against a static dictionary of hash/entity pairs.
 /// </summary>
-public class StaticApiKeySource : IApiKeySource
+public class StaticApiKeySource(Dictionary<string, string> keys) : IApiKeySource
 {
-    private readonly IReadOnlyDictionary<string, string> _keys;
-
-    public StaticApiKeySource(Dictionary<string, string> keys)
-    {
-        _keys = keys;
-    }
+    private readonly IReadOnlyDictionary<string, string> _keys = keys;
 
     public Task<IReadOnlyDictionary<string, string>> GetApiKeys()
     {
