@@ -1,7 +1,10 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace BlazorServerKeycloak.Helpers;
+#pragma warning disable IDE0130 // Namespace does not match folder structure
+namespace BlazorServerKeycloak;
+#pragma warning restore IDE0130 // Namespace does not match folder structure
+
 public static class ClaimExtensions
 {
     /// <summary>
